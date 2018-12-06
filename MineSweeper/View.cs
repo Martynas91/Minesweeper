@@ -3,96 +3,82 @@ using System.Windows.Forms;
 
 namespace MineSweeper
 {
-    public partial class View : Form
+    public partial class View : Form, IView
     {
-        private readonly Presenter _presenter;
-        private readonly Model _model;
-
+        private readonly IController _controller;
 
         public View()
         {
-            _model = new Model();
-            _presenter = new Presenter(_model);
-            SubscribeToModelEvents();
+            _controller = new Controller(this);
 
-            Start();
-        }
-
-        private void SubscribeToModelEvents()
-        {
-            _model.OnFlagsChange += FlagsChanged;
-            _model.OnAddMapButton += AddMapButton;
-            _model.OnGameOver += GameOver;
-            _model.OnWin += GameWin;
-        }
-
-        private void Start()
-        {
             InitializeComponent();
         }
 
-        private void FlagsChanged(object sender, FlagsEventHandler e)
+        private void Start(object sender, EventArgs e)
         {
-            lblFlags.Text = e.FlagsCount.ToString();
+            _controller.LoadGame(cbLevel.Text);
+            btStart.Enabled = false;
+            btResume.Enabled = true;
         }
 
-        private void AddMapButton(object sender, Control e)
+        private void Resume(object sender, EventArgs e)
         {
-            e.MouseDown += OnButtonClick;
-            Controls.Add(e);
-            ResumeLayout();
+            Controls.Clear();
+            InitializeComponent();
+        }
+
+        private void Stop(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+
+        public void FlagsChanged(int flagsCount)
+        {
+            lblFlags.Text = flagsCount.ToString();
+        }
+
+        public void AddMapButtons(CustomizedButton[,] controls)
+        {
+            foreach (var item in controls)
+            {
+                item.MouseDown += OnButtonClick;
+                Controls.Add(item);
+            }
         }
 
         private void OnButtonClick(object sender, EventArgs args)
         {
-            var button = sender as CustomizedButton;
-            if (button == null) return;
-
-            MouseEventArgs e = (MouseEventArgs)args;
-
-            if (e.Button == MouseButtons.Left)
-                _presenter.LeftButtonClicked(button);
-
-            else if (e.Button == MouseButtons.Right)
-            {
-                _presenter.RightButtonClicked(button);
-            }
+            _controller.ButtonClicked(sender, args);
         }
 
-        private void btStart_Click(object sender, EventArgs e)
+        public void GameWin()
         {
-            _presenter.LoadGame(cbLevel.Text);
-        }
-
-        public void GameWin(object sender, EventArgs e)
-        {
-            var dialogResult = MessageBox.Show(@"Congratulations!", @"Play one more time?", MessageBoxButtons.YesNo);
+            var dialogResult = MessageBox.Show(@"Play one more time?", @"Congratulations!", MessageBoxButtons.YesNo);
 
             if (dialogResult == DialogResult.Yes)
             {
                 Controls.Clear();
-                Start();
+                Resume(this, null);
             }
             else
             {
-                Close();
+                Stop(this, null);
             }
         }
 
-        public void GameOver(object sender, EventArgs e)
+        public void GameOver()
         {
-            var dialogResult = MessageBox.Show(@"Game Over", @"Retry?", MessageBoxButtons.YesNo);
+            var dialogResult = MessageBox.Show(@"Retry?", @"Game Over", MessageBoxButtons.YesNo);
 
             if (dialogResult == DialogResult.Yes)
             {
                 Controls.Clear();
-                Start();
+                Resume(this, null);
             }
             else
             {
-                Close();
+                Stop(this, null);
             }
         }
-
     }
 }
